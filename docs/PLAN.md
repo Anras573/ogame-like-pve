@@ -42,7 +42,7 @@ events + a web frontend.
 | Persistence | **PostgreSQL + EF Core** | Relational data fits well (planets, queues, fleets). |
 | Timed events | **Hosted background worker** polling an `events` table (`due_at` index, `FOR UPDATE SKIP LOCKED`) | Simple, durable, horizontally safe. Can move to a dedicated queue later if needed. |
 | Real-time UI updates | **SignalR** | Push "fleet arrived", "building finished", "you are under attack". |
-| Frontend | **React + TypeScript (Vite)** | Alternative: Blazor, to keep one language. Decide in milestone 0. |
+| Frontend | **React + TypeScript (Vite)** | Decided. API types generated from the backend's OpenAPI spec. |
 | Auth | ASP.NET Core Identity (cookie auth) | External logins later. |
 | Testing | xUnit (+ Moq), Testcontainers for Postgres | Formula + combat engine get heavy unit-test coverage. |
 | Local dev / hosting | Docker Compose (api, worker, db) | Deploy to a single VM/container host initially. |
@@ -135,11 +135,18 @@ OGame-style round-based simulation:
 - **Espionage matters:** NPC loadouts vary, so probing before attacking is
   part of the skill.
 
-### 5.3 NPC aggression (optional per server)
-- NPCs occasionally **raid players** (warning shown when the fleet launches,
-  just like an incoming attack in OGame). The raid strength is capped relative to
-  the player's own strength, and protection rules stop players from being
-  crushed (newbie protection, max loss per day, no raids while in vacation mode).
+### 5.3 NPC aggression (on by default, unlocked by progress)
+- NPC raids are **on by default**, but a player is only raided after reaching
+  the **raid unlock milestone**: they've won their first attack on an NPC
+  outpost **and** reached a minimum point total. Both values are set per
+  season. Until then the player is fully protected and can build up freely.
+- When the milestone is reached, the player gets an in-game warning
+  ("the pirates have noticed you"), and the first raid comes after a grace period
+  and is deliberately weak. It works like a tutorial for defending.
+- NPCs **raid players** with a warning when the fleet launches, just like an
+  incoming attack in OGame. Raid strength is capped relative to the player's
+  own strength, and protection rules stop players from being crushed (max loss
+  per day, cooldown between raids, no raids while in vacation mode).
 - Defending successfully yields debris + rewards → defenses are worth building.
 
 ### 5.4 Content & progression
@@ -150,6 +157,46 @@ OGame-style round-based simulation:
 - **Unique rewards**: blueprints, artifacts that give small permanent bonuses,
   cosmetic titles. No pay-to-win.
 - **Leaderboards**: economy, research, NPC kills, event damage.
+
+### 5.5 Seasons
+
+The game runs in **seasons**: each one is a fresh universe that lasts a fixed
+period (target: 10–12 weeks), then ends and a new one starts.
+
+**Why seasons fit a PvE game:**
+- **No power creep and fair for latecomers.** In a universe that never resets,
+  new players arrive years behind the veterans. With seasons, everyone starts
+  together every few months.
+- **The economy doesn't run out of steam.** OGame's growth is exponential;
+  after a while numbers get absurd and goals run out. Seasons keep the
+  satisfying early/mid-game loop coming back.
+- **A content and balance cadence.** Each season can bring a new NPC faction,
+  boss, rule twist or balance pass without breaking anyone's existing empire.
+- **A natural end goal.** The final weeks build toward a season finale (e.g. a
+  server-wide boss invasion), followed by leaderboards and rewards.
+
+**What carries over between seasons** (account-level, never raw power):
+- Cosmetics, titles, badges, the season "hall of fame".
+- Account achievements and statistics.
+- Unlocked *options*, not strength: e.g. extra starting planet names/skins, or
+  picking a starting perk out of a set of balanced choices.
+
+**Each season defines** (data, not code):
+- Start/end dates, game speed, galaxy size.
+- Active NPC factions and world events schedule.
+- Raid unlock milestone values and protection rules.
+- An optional **season modifier** ("double expedition rewards", "Hive-only",
+  "deuterium scarcity").
+
+**Season lifecycle:** `Scheduled → Open (sign-ups, play) → Finale → Ended
+(read-only, leaderboards frozen) → Archived`. Late joiners get a catch-up boost
+(faster production for their first days) so joining in week 6 is still fun.
+
+**Architecture impact:** every piece of game state (planets, fleets, events,
+NPC targets, reports) belongs to a `season_id`, while accounts/auth and
+carry-over rewards are season-independent. This is designed in from M0
+because it's cheap now and painful to add later. Multiple seasons could also
+run in parallel later (e.g. a normal and a fast-speed season).
 
 ## 6. Architecture
 
@@ -213,9 +260,12 @@ Each milestone ends with something playable/demoable.
 ### M0 — Foundations
 - Repo setup: solution, `.editorconfig`, CI (build + test), Docker Compose with
   Postgres.
-- Decide frontend (React vs Blazor).
+- React + TypeScript (Vite) frontend scaffold, wired to the API.
 - Auth: register / login / logout.
-- **Done when:** a user can register, log in and see an empty dashboard.
+- `Season` entity and "join current season" flow. All game data is scoped to a
+  season from the start.
+- **Done when:** a user can register, log in, join a season and see an empty
+  dashboard.
 
 ### M1 — Economy loop (single planet)
 - Universe generation, home planet assigned on signup.
@@ -245,7 +295,8 @@ Each milestone ends with something playable/demoable.
 
 ### M5 — PvE depth
 - More factions (Hive, Rogue AI), tier scaling to player power.
-- NPC raids on players (with protection rules) + incoming-attack warnings.
+- NPC raids on players, unlocked by the raid milestone, with protection rules
+  and incoming-attack warnings.
 - Expeditions.
 - Tutorial + daily/weekly missions.
 - **Done when:** there are meaningful choices about which NPCs to fight and when.
@@ -253,14 +304,21 @@ Each milestone ends with something playable/demoable.
 ### M6 — Social & live ops
 - Alliances, chat/messages, joint attacks (ACS) on world bosses.
 - World events (pirate armada, derelict bosses), leaderboards.
-- Admin tools: universe settings, balance overrides, player support.
+- Admin tools: season settings, balance overrides, player support.
 - **Done when:** a small group of friends can play a universe together for weeks.
+
+### M7 — Full season cycle
+- Season lifecycle (scheduled → open → finale → ended → archived), automated.
+- Season finale event, final leaderboards, rewards handed out.
+- Carry-over rewards (cosmetics, titles, achievements, starting-perk choices).
+- Catch-up boost for late joiners; season modifiers.
+- **Done when:** a season can end and the next one start with no manual work,
+  and players keep their rewards.
 
 ### Later / maybe
 - Moons, jump gates, sensor phalanx equivalents.
-- Multiple universes with different speeds.
+- Parallel seasons with different speeds/modifiers.
 - Mobile-friendly UI / PWA notifications.
-- Seasonal universes with resets and rewards.
 
 ## 8. Risks & open questions
 
@@ -274,8 +332,17 @@ Each milestone ends with something playable/demoable.
 - **IP:** we're inspired by OGame's mechanics, but we must use our own names,
   art, text and exact numbers where it matters. We don't copy OGame's assets or
   branding.
-- **Open questions:**
-  - Frontend: React + TypeScript, or Blazor?
-  - Should NPC raids be on by default, or opt-in ("hardcore" universes)?
-  - One shared persistent universe, or seasonal resets?
-  - Any monetization at all? (Default: none / cosmetic only.)
+- **Season length & resets**: players may feel a reset as a loss. Mitigation:
+  announce end dates from day one, meaningful carry-over rewards, a fun
+  finale. Tune the length through playtesting.
+
+### Decisions
+- Frontend: **React + TypeScript**.
+- NPC raids: **on by default**, after the player reaches the raid unlock
+  milestone (§5.3).
+- Universe model: **seasons** (§5.5).
+
+### Open questions
+- Exact raid unlock milestone values (point threshold, grace period).
+- Season length (10–12 weeks is the starting assumption).
+- Any monetization at all? (Default: none / cosmetic only.)
