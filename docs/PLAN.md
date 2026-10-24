@@ -237,21 +237,28 @@ run in parallel later (e.g. a normal and a fast-speed season).
   doesn't need code changes.
 - **Game speed multiplier** (universe setting) for fast test universes.
 
-### Proposed solution layout
+### Solution layout
 ```
 src/
-  Game.Core/          # pure rules: formulas, combat, NPC generation, definitions
-  Game.Api/           # ASP.NET Core minimal API, feature slices, SignalR hubs
-  Game.Worker/        # event processor + NPC simulation (can run in-process at first)
-  Game.Infrastructure/# EF Core DbContext, migrations, repositories
-  web/                # frontend SPA
+  Game.Api/           # ASP.NET Core minimal API: one folder per feature (Auth/, Seasons/, ...)
+                      # plus Infrastructure/ (DbContext, migrations, repository, specifications)
+  Game.Core/          # (M1) pure rules: formulas, combat, NPC generation, definitions
+  Game.Worker/        # (M1) event processor + NPC simulation (can run in-process at first)
+web/                  # React + TypeScript SPA (Vite)
 tests/
-  Game.Core.Tests/
-  Game.Api.Tests/     # integration tests with Testcontainers
+  Game.Api.Tests/             # fast unit tests (domain logic)
+  Game.Api.IntegrationTests/  # HTTP tests against PostgreSQL via Testcontainers
+  Game.Core.Tests/            # (M1)
 tools/
-  Game.Balance/       # CLI: simulate economies/battles to tune numbers
+  Game.Balance/       # (later) CLI: simulate economies/battles to tune numbers
 docs/
 ```
+
+Persistence lives in `Game.Api/Infrastructure` rather than a separate
+project: a generic `IRepository<T>` plus one specification class per query
+keeps queries out of endpoint handlers without per-entity repository
+boilerplate. `Game.Core` gets added as soon as there are game rules to put in
+it, and must not reference EF Core or ASP.NET Core.
 
 ## 7. Milestones
 
@@ -265,7 +272,9 @@ Each milestone ends with something playable/demoable.
 - `Season` entity and "join current season" flow. All game data is scoped to a
   season from the start.
 - **Done when:** a user can register, log in, join a season and see an empty
-  dashboard.
+  dashboard. ✅ Done.
+- Not in M0: email confirmation and password reset. Identity's endpoints for
+  them exist but there is no email sender yet, so they don't send anything.
 
 ### M1 — Economy loop (single planet)
 - Universe generation, home planet assigned on signup.

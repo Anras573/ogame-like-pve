@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: |
+          dotnet tool restore
+          dotnet restore
+
+      - name: Check formatting
+        run: dotnet format --verify-no-changes --no-restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      # Building regenerates web/src/api/openapi.json; a diff means it wasn't committed
+      - name: Check OpenAPI document is up to date
+        run: git diff --exit-code -- web/src/api/openapi.json
+
+      - name: Check migrations are up to date
+        run: dotnet ef migrations has-pending-model-changes --project src/Game.Api --no-build --configuration Release
+
+      # Integration tests start PostgreSQL with Testcontainers (Docker is available on GitHub runners)
+      - name: Test
+        run: dotnet test --no-build --configuration Release
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+
+      - name: Check API types are up to date
+        run: |
+          npm run gen:api
+          git diff --exit-code -- src/api/schema.ts
+
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
