@@ -1,5 +1,6 @@
 using Game.Api.Seasons;
 using Game.Api.Seasons.Specifications;
+using Game.Core.Universe;
 using Microsoft.EntityFrameworkCore;
 
 namespace Game.Api.Infrastructure;
@@ -11,6 +12,9 @@ namespace Game.Api.Infrastructure;
 public static class DatabaseInitializer
 {
     private static readonly TimeSpan s_defaultSeasonLength = TimeSpan.FromDays(7 * 12);
+
+    // A small, fast universe so playtesting doesn't mean waiting hours for a mine
+    private static readonly UniverseSettings s_developmentUniverse = new(galaxies: 2, systemsPerGalaxy: 50, economySpeed: 10);
 
     public static async Task InitializeDevelopmentDatabaseAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
     {
@@ -28,7 +32,7 @@ public static class DatabaseInitializer
             return;
         }
 
-        var season = Season.Create("Development Season", now, now.Add(s_defaultSeasonLength));
+        var season = Season.Create("Development Season", now, now.Add(s_defaultSeasonLength), s_developmentUniverse);
         context.Seasons.Add(season);
         await context.SaveChangesAsync(cancellationToken);
 

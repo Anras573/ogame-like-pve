@@ -1,7 +1,10 @@
+using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Game.Api.Auth;
 using Game.Api.Infrastructure;
 using Game.Api.Infrastructure.Repositories;
+using Game.Api.Planets;
+using Game.Api.Realtime;
 using Game.Api.Seasons;
 using Game.Api.Users;
 using Microsoft.AspNetCore.Identity;
@@ -13,6 +16,7 @@ builder.Services.AddDbContext<GameDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Game")));
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton(Random.Shared);
 
 builder.Services.AddAuthorization();
 builder.Services.AddIdentityApiEndpoints<User>(options =>
@@ -59,6 +63,21 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
+// Enums travel as names ("MetalMine") and numbers only as numbers, which keeps the API readable and the
+// generated TypeScript types precise
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
+});
+builder.Services.AddSignalR().AddJsonProtocol(options => options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+builder.Services.AddSingleton<ConstructionCompletionProcessor>();
+if (builder.Configuration.GetValue("Worker:Enabled", true))
+{
+    builder.Services.AddHostedService<ConstructionCompletionWorker>();
+}
+
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 
@@ -79,5 +98,7 @@ app.UseAuthorization();
 app.MapGet("/api/health", () => Results.Ok()).WithTags("Health").AllowAnonymous();
 app.MapAuthEndpoints();
 app.MapSeasonEndpoints();
+app.MapPlanetEndpoints();
+app.MapHub<GameHub>(GameHub.Route);
 
 app.Run();

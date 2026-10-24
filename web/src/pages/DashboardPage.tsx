@@ -2,6 +2,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
 import { logout } from '../auth/authApi'
 import { useCurrentUser } from '../auth/useCurrentUser'
+import { PlanetView } from '../planets/PlanetView'
+import { usePlanets } from '../planets/usePlanets'
+import { useGameHub } from '../realtime/useGameHub'
 import { useCurrentSeason, useJoinCurrentSeason, type CurrentSeason } from '../seasons/useCurrentSeason'
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
@@ -75,11 +78,20 @@ function JoinSeason({ season }: { season: CurrentSeason }) {
 }
 
 function JoinedSeason({ season }: { season: CurrentSeason }) {
+  const { data: planets, isPending, isError } = usePlanets(true)
+  useGameHub()
+
+  if (isPending) return <p className="muted">Loading your empire…</p>
+  if (isError) return <p role="alert">Could not load your planets.</p>
+
+  const home = planets[0]
+
   return (
-    <section className="card">
-      <h1>{season.name}</h1>
-      <SeasonDates season={season} />
-      <p>You're in. Your empire will appear here soon.</p>
-    </section>
+    <>
+      <p className="season-line muted">
+        {season.name} · ends {dateFormat.format(new Date(season.endsAt))}
+      </p>
+      {home ? <PlanetView planetId={home.id} /> : <p className="muted">You have no planets in this season.</p>}
+    </>
   )
 }

@@ -71,6 +71,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/planets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description List the signed-in player's planets in the current season */
+        get: operations["GetPlanets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/planets/{planetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get one of your planets, brought up to date */
+        get: operations["GetPlanet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/planets/{planetId}/construction": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Start upgrading a building by one level, paying its cost now */
+        post: operations["StartConstruction"];
+        /** @description Cancel the construction in progress and get its full cost back */
+        delete: operations["CancelConstruction"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/register": {
         parameters: {
             query?: never;
@@ -539,8 +591,35 @@ export interface components {
             tokenType?: null | string;
             accessToken: string;
             /** Format: int64 */
-            expiresIn: number | string;
+            expiresIn: number;
             refreshToken: string;
+        };
+        BuildingDto: {
+            type: components["schemas"]["BuildingType"];
+            /** Format: int32 */
+            level: number;
+            nextLevelCost: components["schemas"]["ResourcesDto"];
+            /** Format: int32 */
+            nextLevelBuildSeconds: number;
+        };
+        /** @enum {unknown} */
+        BuildingType: "MetalMine" | "CrystalMine" | "DeuteriumSynthesizer" | "SolarPlant" | "RoboticsFactory" | "MetalStorage" | "CrystalStorage" | "DeuteriumTank";
+        ConstructionDto: {
+            building: components["schemas"]["BuildingType"];
+            /** Format: int32 */
+            targetLevel: number;
+            /** Format: date-time */
+            startedAt: string;
+            /** Format: date-time */
+            completesAt: string;
+        };
+        CoordinatesDto: {
+            /** Format: int32 */
+            galaxy: number;
+            /** Format: int32 */
+            system: number;
+            /** Format: int32 */
+            position: number;
         };
         CurrentSeasonDto: {
             /** Format: uuid */
@@ -557,6 +636,14 @@ export interface components {
             id: string;
             email: string;
         };
+        EnergyDto: {
+            /** Format: double */
+            produced: number;
+            /** Format: double */
+            consumed: number;
+            /** Format: double */
+            productionFactor: number;
+        };
         ForgotPasswordRequest: {
             email: string;
         };
@@ -564,7 +651,7 @@ export interface components {
             type?: null | string;
             title?: null | string;
             /** Format: int32 */
-            status?: null | number | string;
+            status?: null | number;
             detail?: null | string;
             instance?: null | string;
             errors?: {
@@ -586,6 +673,38 @@ export interface components {
             twoFactorCode?: null | string;
             twoFactorRecoveryCode?: null | string;
         };
+        PlanetDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            coordinates: components["schemas"]["CoordinatesDto"];
+            /** Format: int32 */
+            maxTemperature: number;
+            resources: components["schemas"]["ResourcesDto"];
+            /** Format: date-time */
+            resourcesAsOf: string;
+            hourlyProduction: components["schemas"]["ResourcesDto"];
+            storageCapacity: components["schemas"]["ResourcesDto"];
+            energy: components["schemas"]["EnergyDto"];
+            buildings: components["schemas"]["BuildingDto"][];
+            construction: null | components["schemas"]["ConstructionDto"];
+            /** Format: date-time */
+            serverTime: string;
+        };
+        PlanetSummaryDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            coordinates: components["schemas"]["CoordinatesDto"];
+        };
+        ProblemDetails: {
+            type?: null | string;
+            title?: null | string;
+            /** Format: int32 */
+            status?: null | number;
+            detail?: null | string;
+            instance?: null | string;
+        };
         RefreshRequest: {
             refreshToken: string;
         };
@@ -601,11 +720,22 @@ export interface components {
             resetCode: string;
             newPassword: string;
         };
+        ResourcesDto: {
+            /** Format: double */
+            metal: number;
+            /** Format: double */
+            crystal: number;
+            /** Format: double */
+            deuterium: number;
+        };
         SeasonPlayerDto: {
             /** Format: uuid */
             playerId: string;
             /** Format: date-time */
             joinedAt: string;
+        };
+        StartConstructionRequest: {
+            building: components["schemas"]["BuildingType"];
         };
         TwoFactorRequest: {
             enable?: null | boolean;
@@ -617,7 +747,7 @@ export interface components {
         TwoFactorResponse: {
             sharedKey: string;
             /** Format: int32 */
-            recoveryCodesLeft: number | string;
+            recoveryCodesLeft: number;
             recoveryCodes?: null | string[];
             isTwoFactorEnabled: boolean;
             isMachineRemembered: boolean;
@@ -703,6 +833,172 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    GetPlanets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanetSummaryDto"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    GetPlanet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanetDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    StartConstruction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartConstructionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanetDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CancelConstruction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanetDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
             };
         };
     };

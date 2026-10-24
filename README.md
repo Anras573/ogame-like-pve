@@ -8,8 +8,8 @@ See [docs/PLAN.md](docs/PLAN.md) for the design and roadmap.
 
 ## Tech stack
 
-- **Backend:** ASP.NET Core (.NET 10) minimal APIs, EF Core, PostgreSQL, ASP.NET Core Identity (cookie auth)
-- **Frontend:** React + TypeScript (Vite), React Router, TanStack Query, `openapi-fetch`
+- **Backend:** ASP.NET Core (.NET 10) minimal APIs, EF Core, PostgreSQL, ASP.NET Core Identity (cookie auth), SignalR
+- **Frontend:** React + TypeScript (Vite), React Router, TanStack Query, `openapi-fetch`, `@microsoft/signalr`
 - **Tests:** xUnit + Moq, Testcontainers (PostgreSQL), Vitest + Testing Library
 
 ## Getting started
@@ -31,8 +31,13 @@ npm run dev
 ```
 
 Open http://localhost:5173, create an account and join the season. The Vite dev
-server proxies `/api` to the API, so the browser sees one origin and the auth
-cookie just works.
+server proxies `/api` and `/hubs` (SignalR) to the API, so the browser sees one
+origin and the auth cookie just works.
+
+The development season is small (2 galaxies × 50 systems) and runs at 10×
+economy speed, so a first mine takes seconds rather than minutes. If your
+database still has a season from before planets existed, reset it with
+`docker compose down -v`.
 
 ## Running tests and checks
 
@@ -68,9 +73,11 @@ dotnet ef migrations add <Name> --project src/Game.Api --output-dir Infrastructu
 ## Project layout
 
 ```
-src/Game.Api/             API: one folder per feature (Auth/, Seasons/, Players/, Users/)
+src/Game.Core/            game rules: formulas and definitions, no framework dependencies
+src/Game.Api/             API: one folder per feature (Auth/, Seasons/, Players/, Planets/, Realtime/)
   Infrastructure/         DbContext, migrations, generic repository, specifications
-tests/Game.Api.Tests/             unit tests
+tests/Game.Core.Tests/            rules and formulas
+tests/Game.Api.Tests/             unit tests (entities)
 tests/Game.Api.IntegrationTests/  HTTP tests against a real PostgreSQL (Testcontainers)
 web/                      React + TypeScript frontend
 docs/PLAN.md              game design and roadmap

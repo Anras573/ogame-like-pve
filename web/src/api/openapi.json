@@ -74,6 +74,185 @@
         }
       }
     },
+    "/api/planets": {
+      "get": {
+        "tags": [
+          "Planets"
+        ],
+        "description": "List the signed-in player's planets in the current season",
+        "operationId": "GetPlanets",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlanetSummaryDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/planets/{planetId}": {
+      "get": {
+        "tags": [
+          "Planets"
+        ],
+        "description": "Get one of your planets, brought up to date",
+        "operationId": "GetPlanet",
+        "parameters": [
+          {
+            "name": "planetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanetDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/planets/{planetId}/construction": {
+      "post": {
+        "tags": [
+          "Planets"
+        ],
+        "description": "Start upgrading a building by one level, paying its cost now",
+        "operationId": "StartConstruction",
+        "parameters": [
+          {
+            "name": "planetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartConstructionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanetDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Planets"
+        ],
+        "description": "Cancel the construction in progress and get its full cost back",
+        "operationId": "CancelConstruction",
+        "parameters": [
+          {
+            "name": "planetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanetDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/register": {
       "post": {
         "tags": [
@@ -490,15 +669,96 @@
             "type": "string"
           },
           "expiresIn": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int64"
           },
           "refreshToken": {
             "type": "string"
+          }
+        }
+      },
+      "BuildingDto": {
+        "required": [
+          "type",
+          "level",
+          "nextLevelCost",
+          "nextLevelBuildSeconds"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/BuildingType"
+          },
+          "level": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nextLevelCost": {
+            "$ref": "#/components/schemas/ResourcesDto"
+          },
+          "nextLevelBuildSeconds": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "BuildingType": {
+        "enum": [
+          "MetalMine",
+          "CrystalMine",
+          "DeuteriumSynthesizer",
+          "SolarPlant",
+          "RoboticsFactory",
+          "MetalStorage",
+          "CrystalStorage",
+          "DeuteriumTank"
+        ]
+      },
+      "ConstructionDto": {
+        "required": [
+          "building",
+          "targetLevel",
+          "startedAt",
+          "completesAt"
+        ],
+        "type": "object",
+        "properties": {
+          "building": {
+            "$ref": "#/components/schemas/BuildingType"
+          },
+          "targetLevel": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completesAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CoordinatesDto": {
+        "required": [
+          "galaxy",
+          "system",
+          "position"
+        ],
+        "type": "object",
+        "properties": {
+          "galaxy": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "system": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -555,6 +815,28 @@
           }
         }
       },
+      "EnergyDto": {
+        "required": [
+          "produced",
+          "consumed",
+          "productionFactor"
+        ],
+        "type": "object",
+        "properties": {
+          "produced": {
+            "type": "number",
+            "format": "double"
+          },
+          "consumed": {
+            "type": "number",
+            "format": "double"
+          },
+          "productionFactor": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
       "ForgotPasswordRequest": {
         "required": [
           "email"
@@ -582,11 +864,9 @@
             ]
           },
           "status": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
-              "integer",
-              "string"
+              "integer"
             ],
             "format": "int32"
           },
@@ -678,6 +958,131 @@
           }
         }
       },
+      "PlanetDto": {
+        "required": [
+          "id",
+          "name",
+          "coordinates",
+          "maxTemperature",
+          "resources",
+          "resourcesAsOf",
+          "hourlyProduction",
+          "storageCapacity",
+          "energy",
+          "buildings",
+          "construction",
+          "serverTime"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "coordinates": {
+            "$ref": "#/components/schemas/CoordinatesDto"
+          },
+          "maxTemperature": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "resources": {
+            "$ref": "#/components/schemas/ResourcesDto"
+          },
+          "resourcesAsOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "hourlyProduction": {
+            "$ref": "#/components/schemas/ResourcesDto"
+          },
+          "storageCapacity": {
+            "$ref": "#/components/schemas/ResourcesDto"
+          },
+          "energy": {
+            "$ref": "#/components/schemas/EnergyDto"
+          },
+          "buildings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BuildingDto"
+            }
+          },
+          "construction": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ConstructionDto"
+              }
+            ]
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PlanetSummaryDto": {
+        "required": [
+          "id",
+          "name",
+          "coordinates"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "coordinates": {
+            "$ref": "#/components/schemas/CoordinatesDto"
+          }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "RefreshRequest": {
         "required": [
           "refreshToken"
@@ -734,6 +1139,28 @@
           }
         }
       },
+      "ResourcesDto": {
+        "required": [
+          "metal",
+          "crystal",
+          "deuterium"
+        ],
+        "type": "object",
+        "properties": {
+          "metal": {
+            "type": "number",
+            "format": "double"
+          },
+          "crystal": {
+            "type": "number",
+            "format": "double"
+          },
+          "deuterium": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
       "SeasonPlayerDto": {
         "required": [
           "playerId",
@@ -748,6 +1175,17 @@
           "joinedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "StartConstructionRequest": {
+        "required": [
+          "building"
+        ],
+        "type": "object",
+        "properties": {
+          "building": {
+            "$ref": "#/components/schemas/BuildingType"
           }
         }
       },
@@ -790,11 +1228,7 @@
             "type": "string"
           },
           "recoveryCodesLeft": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": "integer",
             "format": "int32"
           },
           "recoveryCodes": {
@@ -822,6 +1256,9 @@
     },
     {
       "name": "Seasons"
+    },
+    {
+      "name": "Planets"
     },
     {
       "name": "Auth"
