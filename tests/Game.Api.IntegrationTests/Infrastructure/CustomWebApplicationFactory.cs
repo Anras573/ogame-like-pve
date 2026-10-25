@@ -16,7 +16,11 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly PostgreSqlContainer _database = new PostgreSqlBuilder("postgres:17-alpine").Build();
 
-    public FakeTimeProvider TimeProvider { get; } = new(DateTimeOffset.UtcNow);
+    /// <summary>
+    /// Starts on a whole second (PostgreSQL keeps microseconds, so finer ticks would round-trip inexactly) and only
+    /// ever moves forward: tests advance it, and every test builds its data relative to its current value.
+    /// </summary>
+    public FakeTimeProvider TimeProvider { get; } = new(DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.UtcNow.ToUnixTimeSeconds()));
 
     public async Task InitializeAsync()
     {
@@ -31,9 +35,7 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
     {
         using var scope = Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<GameDbContext>();
-        await context.Database.ExecuteSqlRawAsync("""TRUNCATE "Players", "Seasons", "AspNetUsers" CASCADE""");
-
-        TimeProvider.SetUtcNow(DateTimeOffset.UtcNow);
+        await context.Database.ExecuteSqlRawAsync("""TRUNCATE "Planets", "Players", "Seasons", "AspNetUsers" CASCADE""");
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -41,6 +43,9 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:Game", _database.GetConnectionString());
         builder.UseSetting("RateLimiting:AuthPermitLimit", "10000");
+
+        // Tests drive the completion processor directly instead of racing a background loop
+        builder.UseSetting("Worker:Enabled", "false");
 
         builder.ConfigureServices(services =>
         {

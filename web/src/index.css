@@ -8,6 +8,7 @@
   --accent: #5b8cff;
   --accent-strong: #7fa4ff;
   --danger: #ff6b6b;
+  --warning: #f5b84a;
 
   font: 16px/1.5 system-ui, 'Segoe UI', Roboto, sans-serif;
   color-scheme: dark;
@@ -133,4 +134,142 @@ button:disabled {
   font-weight: 700;
   color: var(--text-strong);
   letter-spacing: 0.05em;
+}
+
+h2 {
+  margin: 2rem 0 0.75rem;
+  color: var(--text-strong);
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+h3 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 1rem;
+}
+
+button.secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+button.secondary:hover:not(:disabled) {
+  background: var(--surface);
+  border-color: var(--accent);
+}
+
+.season-line {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+}
+
+.planet-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.planet-header h1 {
+  margin: 0;
+}
+
+.resource-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+}
+
+.resource {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+}
+
+.resource dt {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.resource dd {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 1.3rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.resource dd.hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.resource.full,
+.resource.shortage {
+  border-color: var(--warning);
+}
+
+.resource.full dd.hint,
+.resource.shortage dd.hint {
+  color: var(--warning);
+}
+
+.construction {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-color: var(--accent);
+}
+
+.construction p {
+  margin: 0.25rem 0 0;
+}
+
+.building-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.75rem;
+}
+
+.building {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+
+.building p {
+  margin: 0;
+  font-size: 0.9rem;
+  flex: 1;
+}
+
+.level {
+  margin-left: 0.4rem;
+  color: var(--accent-strong);
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.cost {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.9rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.cost .missing {
+  color: var(--danger);
 }

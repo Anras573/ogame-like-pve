@@ -1,9 +1,11 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Game.Api/Game.Api.csproj" />
+    <Project Path="src/Game.Core/Game.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Game.Api.IntegrationTests/Game.Api.IntegrationTests.csproj" />
     <Project Path="tests/Game.Api.Tests/Game.Api.Tests.csproj" />
+    <Project Path="tests/Game.Core.Tests/Game.Core.Tests.csproj" />
   </Folder>
 </Solution>

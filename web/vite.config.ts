@@ -9,6 +9,7 @@ export default defineConfig({
     // The API runs separately in development; proxying keeps everything same-origin so the auth cookie just works
     proxy: {
       '/api': 'http://localhost:5157',
+      '/hubs': { target: 'http://localhost:5157', ws: true },
     },
   },
   test: {

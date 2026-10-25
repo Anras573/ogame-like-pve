@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Game.Api\Game.Api.csproj" />
+    <ProjectReference Include="..\..\src\Game.Core\Game.Core.csproj" />
   </ItemGroup>
 
 </Project>

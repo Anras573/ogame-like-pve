@@ -1,6 +1,7 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
+import { homePlanet, planetId } from '../test/fixtures'
 import { json, renderApp, stubApi } from '../test/utils'
 
 const user = { id: '00000000-0000-0000-0000-000000000001', email: 'commander@example.com' }
@@ -39,7 +40,7 @@ describe('DashboardPage', () => {
     expect(screen.getByRole('button', { name: 'Join season' })).toBeInTheDocument()
   })
 
-  it('shows the joined state after joining', async () => {
+  it('shows the home planet after joining', async () => {
     let joined = false
     const fetchMock = stubApi({
       'GET /api/auth/me': () => json(user),
@@ -48,12 +49,15 @@ describe('DashboardPage', () => {
         joined = true
         return json(joinedSeason.player, 201)
       },
+      'GET /api/planets': () => json([{ id: planetId, name: 'Homeworld', coordinates: { galaxy: 1, system: 42, position: 8 } }]),
+      [`GET /api/planets/${planetId}`]: () => json(homePlanet()),
     })
 
     renderApp('/')
     await userEvent.click(await screen.findByRole('button', { name: 'Join season' }))
 
-    expect(await screen.findByText(/You're in/)).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Homeworld' })).toBeInTheDocument()
+    expect(screen.getByText('[1:42:8] · up to 40°C')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Join season' })).not.toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith(expect.objectContaining({ method: 'POST' }))
   })

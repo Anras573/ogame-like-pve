@@ -226,15 +226,21 @@ run in parallel later (e.g. a normal and a fast-speed season).
 - **Server-authoritative.** The client only displays state and sends intents
   ("build Metal Mine 5"). All validation, costs and timing happen on the server.
 - **Lazy + event-driven time.** Resources are computed on demand. Discrete
-  happenings (build done, fleet arrives) are rows in an `events` table with a
-  `due_at`; the worker processes them in order, transactionally and
-  idempotently.
+  happenings (build done, fleet arrives) have a due time; a worker finds the
+  due ones and processes them, transactionally and idempotently.
+  - M1: the only event is "construction done", so its due time is simply an
+    indexed column on the planet (`Construction_CompletesAt`). A generic
+    `events` table arrives with fleets (M3), once several kinds of event have
+    to be ordered against each other.
 - **Process "catch-up" correctly.** Before any action on a planet, first apply
   all of that planet's events that are due, in order (so production before and
   after a mine upgrade is right).
 - **Data-driven content.** Buildings, research, ships, NPC factions and tiers
-  live in versioned JSON/YAML definitions loaded by `Game.Core`, so balancing
-  doesn't need code changes.
+  are definitions (numbers), kept apart from the formulas that use them, so
+  balancing doesn't touch logic.
+  - M1: definitions are a typed C# catalog in `Game.Core`
+    (`BuildingCatalog`). They move to versioned JSON/YAML files once the
+    balancing tool exists or non-developers need to edit them.
 - **Game speed multiplier** (universe setting) for fast test universes.
 
 ### Solution layout
@@ -242,13 +248,13 @@ run in parallel later (e.g. a normal and a fast-speed season).
 src/
   Game.Api/           # ASP.NET Core minimal API: one folder per feature (Auth/, Seasons/, ...)
                       # plus Infrastructure/ (DbContext, migrations, repository, specifications)
-  Game.Core/          # (M1) pure rules: formulas, combat, NPC generation, definitions
-  Game.Worker/        # (M1) event processor + NPC simulation (can run in-process at first)
+  Game.Core/          # pure rules: formulas, definitions; later combat, NPC generation
+                      # (no EF Core, no ASP.NET Core)
 web/                  # React + TypeScript SPA (Vite)
 tests/
   Game.Api.Tests/             # fast unit tests (domain logic)
   Game.Api.IntegrationTests/  # HTTP tests against PostgreSQL via Testcontainers
-  Game.Core.Tests/            # (M1)
+  Game.Core.Tests/            # rules and formulas
 tools/
   Game.Balance/       # (later) CLI: simulate economies/battles to tune numbers
 docs/
@@ -257,8 +263,13 @@ docs/
 Persistence lives in `Game.Api/Infrastructure` rather than a separate
 project: a generic `IRepository<T>` plus one specification class per query
 keeps queries out of endpoint handlers without per-entity repository
-boilerplate. `Game.Core` gets added as soon as there are game rules to put in
-it, and must not reference EF Core or ASP.NET Core.
+boilerplate. `Game.Core` must not reference EF Core or ASP.NET Core.
+
+Background work (completing constructions, later NPC simulation) runs as
+hosted services inside `Game.Api`. It moves to a separate `Game.Worker`
+process when load or deployment needs call for it; everything it does is
+already safe to run on several instances at once (optimistic concurrency on
+planets).
 
 ## 7. Milestones
 
@@ -282,6 +293,11 @@ Each milestone ends with something playable/demoable.
 - Buildings with costs, build times, build queue (one slot), cancel with refund.
 - Event table + worker; SignalR "building finished" notification.
 - **Done when:** a player can grow their mines over real time, offline included.
+  ✅ Done.
+- Buildings in M1: metal/crystal/deuterium mines, solar plant, robotics
+  factory, three storages. Shipyard, research lab and the rest come with M2.
+- Not in M1: production percentages per mine, planet size limits (fields),
+  renaming planets.
 
 ### M2 — Research & shipyard
 - Research lab + tech tree with prerequisites.

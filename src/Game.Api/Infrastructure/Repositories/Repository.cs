@@ -7,12 +7,12 @@ public class Repository<T>(GameDbContext context) : IRepository<T> where T : cla
 {
     public async Task<T?> FirstOrDefaultAsync(ISpecification<T> specification, CancellationToken cancellationToken = default)
     {
-        return await ApplyIncludes(specification).FirstOrDefaultAsync(specification.Criteria, cancellationToken);
+        return await Apply(specification).FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<List<T>> ListAsync(ISpecification<T> specification, CancellationToken cancellationToken = default)
     {
-        return await ApplyIncludes(specification).Where(specification.Criteria).ToListAsync(cancellationToken);
+        return await Apply(specification).ToListAsync(cancellationToken);
     }
 
     public async Task AddAsync(T entity, CancellationToken cancellationToken = default)
@@ -21,18 +21,40 @@ public class Repository<T>(GameDbContext context) : IRepository<T> where T : cla
         await context.SaveChangesAsync(cancellationToken);
     }
 
+    public void Add(T entity)
+    {
+        context.Set<T>().Add(entity);
+    }
+
+    public void Detach(T entity)
+    {
+        context.Entry(entity).State = EntityState.Detached;
+    }
+
     public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         await context.SaveChangesAsync(cancellationToken);
     }
 
-    private IQueryable<T> ApplyIncludes(ISpecification<T> specification)
+    private IQueryable<T> Apply(ISpecification<T> specification)
     {
         IQueryable<T> query = context.Set<T>();
 
         foreach (var include in specification.Includes)
         {
             query = query.Include(include);
+        }
+
+        query = query.Where(specification.Criteria);
+
+        if (specification.OrderBy is not null)
+        {
+            query = query.OrderBy(specification.OrderBy);
+        }
+
+        if (specification.Take is { } take)
+        {
+            query = query.Take(take);
         }
 
         return query;
