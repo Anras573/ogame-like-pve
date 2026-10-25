@@ -1,6 +1,11 @@
+using System.Reflection;
 using Game.Api.Infrastructure;
+using Game.Api.Planets;
 using Game.Api.Seasons;
+using Game.Core.Buildings;
+using Game.Core.Resources;
 using Game.Core.Universe;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Game.Api.IntegrationTests.Infrastructure;
@@ -34,5 +39,32 @@ public static class TestDataSeeder
     {
         var now = factory.TimeProvider.GetUtcNow();
         return factory.AddSeasonAsync(name, now.AddHours(-1), now.AddDays(84), universe);
+    }
+
+    /// <summary>
+    /// Puts a planet into a state that would take many real actions to reach (labs, shipyards, a full treasury).
+    /// </summary>
+    public static async Task UpdatePlanetAsync(
+        this CustomWebApplicationFactory factory,
+        Guid planetId,
+        ResourceAmounts? resources = null,
+        params (BuildingType Type, int Level)[] buildings)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<GameDbContext>();
+        var planet = await context.Planets.SingleAsync(p => p.Id == new PlanetId(planetId));
+
+        if (buildings.Length > 0)
+        {
+            typeof(Planet).GetField("_buildingLevels", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(planet, buildings.ToDictionary(b => b.Type, b => b.Level));
+        }
+
+        if (resources is { } amounts)
+        {
+            typeof(Planet).GetProperty(nameof(Planet.Resources))!.SetValue(planet, amounts);
+        }
+
+        await context.SaveChangesAsync();
     }
 }

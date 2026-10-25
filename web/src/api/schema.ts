@@ -123,6 +123,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/planets/{planetId}/shipyard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Order ships or defenses from this planet's shipyard, paying for all of them now */
+        post: operations["EnqueueUnits"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/planets/{planetId}/research": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get your research, with costs and times for this planet's lab */
+        get: operations["GetResearch"];
+        put?: never;
+        /** @description Start researching the next level of a technology in this planet's lab, paying from this planet */
+        post: operations["StartResearch"];
+        /** @description Cancel the research started on this planet and get its full cost back */
+        delete: operations["CancelResearch"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/register": {
         parameters: {
             query?: never;
@@ -601,9 +637,15 @@ export interface components {
             nextLevelCost: components["schemas"]["ResourcesDto"];
             /** Format: int32 */
             nextLevelBuildSeconds: number;
+            missingRequirements: components["schemas"]["MissingRequirementsDto"];
+        };
+        BuildingLevelDto: {
+            building: components["schemas"]["BuildingType"];
+            /** Format: int32 */
+            level: number;
         };
         /** @enum {unknown} */
-        BuildingType: "MetalMine" | "CrystalMine" | "DeuteriumSynthesizer" | "SolarPlant" | "RoboticsFactory" | "MetalStorage" | "CrystalStorage" | "DeuteriumTank";
+        BuildingType: "MetalMine" | "CrystalMine" | "DeuteriumSynthesizer" | "SolarPlant" | "RoboticsFactory" | "MetalStorage" | "CrystalStorage" | "DeuteriumTank" | "Shipyard" | "ResearchLab";
         ConstructionDto: {
             building: components["schemas"]["BuildingType"];
             /** Format: int32 */
@@ -620,6 +662,17 @@ export interface components {
             system: number;
             /** Format: int32 */
             position: number;
+        };
+        CurrentResearchDto: {
+            research: components["schemas"]["ResearchType"];
+            /** Format: int32 */
+            targetLevel: number;
+            /** Format: uuid */
+            planetId: string;
+            /** Format: date-time */
+            startedAt: string;
+            /** Format: date-time */
+            completesAt: string;
         };
         CurrentSeasonDto: {
             /** Format: uuid */
@@ -643,6 +696,11 @@ export interface components {
             consumed: number;
             /** Format: double */
             productionFactor: number;
+        };
+        EnqueueUnitsRequest: {
+            unit: components["schemas"]["UnitType"];
+            /** Format: int32 */
+            quantity: number;
         };
         ForgotPasswordRequest: {
             email: string;
@@ -673,6 +731,10 @@ export interface components {
             twoFactorCode?: null | string;
             twoFactorRecoveryCode?: null | string;
         };
+        MissingRequirementsDto: {
+            buildings: components["schemas"]["BuildingLevelDto"][];
+            research: components["schemas"]["ResearchLevelDto"][];
+        };
         PlanetDto: {
             /** Format: uuid */
             id: string;
@@ -688,6 +750,10 @@ export interface components {
             energy: components["schemas"]["EnergyDto"];
             buildings: components["schemas"]["BuildingDto"][];
             construction: null | components["schemas"]["ConstructionDto"];
+            units: components["schemas"]["UnitDto"][];
+            shipyardQueue: components["schemas"]["ShipyardOrderDto"][];
+            /** Format: date-time */
+            shipyardProgressAt: null | string;
             /** Format: date-time */
             serverTime: string;
         };
@@ -712,6 +778,32 @@ export interface components {
             email: string;
             password: string;
         };
+        ResearchDto: {
+            type: components["schemas"]["ResearchType"];
+            /** Format: int32 */
+            level: number;
+            nextLevelCost: components["schemas"]["ResourcesDto"];
+            /** Format: int32 */
+            nextLevelResearchSeconds: number;
+            missingRequirements: components["schemas"]["MissingRequirementsDto"];
+        };
+        ResearchLevelDto: {
+            research: components["schemas"]["ResearchType"];
+            /** Format: int32 */
+            level: number;
+        };
+        ResearchOverviewDto: {
+            /** Format: uuid */
+            planetId: string;
+            /** Format: int32 */
+            researchLabLevel: number;
+            technologies: components["schemas"]["ResearchDto"][];
+            currentResearch: null | components["schemas"]["CurrentResearchDto"];
+            /** Format: date-time */
+            serverTime: string;
+        };
+        /** @enum {unknown} */
+        ResearchType: "EnergyTechnology" | "LaserTechnology" | "IonTechnology" | "HyperspaceTechnology" | "PlasmaTechnology" | "CombustionDrive" | "ImpulseDrive" | "HyperspaceDrive" | "EspionageTechnology" | "ComputerTechnology" | "Astrophysics" | "WeaponsTechnology" | "ShieldingTechnology" | "ArmourTechnology";
         ResendConfirmationEmailRequest: {
             email: string;
         };
@@ -734,8 +826,18 @@ export interface components {
             /** Format: date-time */
             joinedAt: string;
         };
+        ShipyardOrderDto: {
+            unit: components["schemas"]["UnitType"];
+            /** Format: int32 */
+            quantity: number;
+            /** Format: int32 */
+            unitBuildSeconds: number;
+        };
         StartConstructionRequest: {
             building: components["schemas"]["BuildingType"];
+        };
+        StartResearchRequest: {
+            research: components["schemas"]["ResearchType"];
         };
         TwoFactorRequest: {
             enable?: null | boolean;
@@ -752,6 +854,32 @@ export interface components {
             isTwoFactorEnabled: boolean;
             isMachineRemembered: boolean;
         };
+        /** @enum {unknown} */
+        UnitCategory: "Ship" | "Defense";
+        UnitDto: {
+            type: components["schemas"]["UnitType"];
+            category: components["schemas"]["UnitCategory"];
+            /** Format: int32 */
+            count: number;
+            cost: components["schemas"]["ResourcesDto"];
+            /** Format: int32 */
+            buildSeconds: number;
+            /** Format: int32 */
+            weapon: number;
+            /** Format: int32 */
+            shield: number;
+            /** Format: int32 */
+            structuralIntegrity: number;
+            /** Format: int32 */
+            speed: number;
+            /** Format: int32 */
+            cargo: number;
+            /** Format: int32 */
+            maxPerPlanet: null | number;
+            missingRequirements: components["schemas"]["MissingRequirementsDto"];
+        };
+        /** @enum {unknown} */
+        UnitType: "SmallCargo" | "LargeCargo" | "LightFighter" | "HeavyFighter" | "Cruiser" | "Battleship" | "Bomber" | "Destroyer" | "Recycler" | "EspionageProbe" | "ColonyShip" | "RocketLauncher" | "LightLaser" | "HeavyLaser" | "GaussCannon" | "IonCannon" | "PlasmaTurret" | "SmallShieldDome" | "LargeShieldDome";
     };
     responses: never;
     parameters: never;
@@ -928,9 +1056,7 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
-                };
+                content?: never;
             };
             /** @description Unauthorized */
             401: {
@@ -975,6 +1101,199 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlanetDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    EnqueueUnits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnqueueUnitsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanetDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetResearch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchOverviewDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    StartResearch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartResearchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchOverviewDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CancelResearch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchOverviewDto"];
                 };
             };
             /** @description Unauthorized */

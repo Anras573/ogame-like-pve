@@ -1,9 +1,10 @@
 using Game.Core.Resources;
+using Game.Core.TechTree;
 
 namespace Game.Core.Buildings;
 
 /// <summary>
-/// Every building's cost curve. The numbers are a starting point shaped like the genre's classic curves;
+/// Every building's cost curve and prerequisites. The numbers are a starting point shaped like the genre's classic curves;
 /// expect them to be tuned once there is a balancing tool.
 /// </summary>
 public static class BuildingCatalog
@@ -18,6 +19,11 @@ public static class BuildingCatalog
         new(BuildingType.MetalStorage, new ResourceAmounts(1000, 0, 0), 2),
         new(BuildingType.CrystalStorage, new ResourceAmounts(1000, 500, 0), 2),
         new(BuildingType.DeuteriumTank, new ResourceAmounts(1000, 1000, 0), 2),
+        new(BuildingType.Shipyard, new ResourceAmounts(400, 200, 100), 2)
+        {
+            Requirements = [new BuildingRequirement(BuildingType.RoboticsFactory, 2)],
+        },
+        new(BuildingType.ResearchLab, new ResourceAmounts(200, 400, 200), 2),
     }.ToDictionary(d => d.Type);
 
     public static IReadOnlyCollection<BuildingDefinition> All => s_definitions.Values;

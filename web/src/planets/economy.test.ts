@@ -1,25 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { canAfford, formatAmount, formatDuration, projectResources } from './economy'
+import { homePlanet } from '../test/fixtures'
 import type { Planet } from './types'
 
 const asOf = Date.parse('2026-11-01T12:00:00Z')
 
 function planet(overrides: Partial<Planet> = {}): Planet {
-  return {
-    id: 'p1',
-    name: 'Homeworld',
-    coordinates: { galaxy: 1, system: 2, position: 8 },
-    maxTemperature: 40,
-    resources: { metal: 500, crystal: 500, deuterium: 0 },
-    resourcesAsOf: new Date(asOf).toISOString(),
-    hourlyProduction: { metal: 30, crystal: 15, deuterium: 0 },
-    storageCapacity: { metal: 10_000, crystal: 10_000, deuterium: 10_000 },
-    energy: { produced: 0, consumed: 0, productionFactor: 1 },
-    buildings: [],
-    construction: null,
-    serverTime: new Date(asOf).toISOString(),
-    ...overrides,
-  }
+  return homePlanet({ resourcesAsOf: new Date(asOf).toISOString(), serverTime: new Date(asOf).toISOString(), ...overrides })
 }
 
 describe('projectResources', () => {

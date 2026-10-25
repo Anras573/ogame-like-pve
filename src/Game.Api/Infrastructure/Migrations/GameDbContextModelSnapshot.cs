@@ -51,6 +51,9 @@ namespace Game.Api.Infrastructure.Migrations
                     b.Property<Guid>("SeasonId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("ShipyardProgressAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("SolarSystem")
                         .HasColumnType("integer");
 
@@ -64,6 +67,16 @@ namespace Game.Api.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb")
                         .HasColumnName("BuildingLevels");
+
+                    b.Property<string>("_shipyardOrders")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("ShipyardOrders");
+
+                    b.Property<string>("_units")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("Units");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Resources", "Game.Api.Planets.Planet.Resources#ResourceAmounts", b1 =>
                         {
@@ -102,6 +115,17 @@ namespace Game.Api.Infrastructure.Migrations
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("_researchLevels")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("ResearchLevels");
 
                     b.HasKey("Id");
 
@@ -408,6 +432,49 @@ namespace Game.Api.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.OwnsOne("Game.Api.Players.ResearchProject", "CurrentResearch", b1 =>
+                        {
+                            b1.Property<Guid>("PlayerId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<DateTimeOffset>("CompletesAt")
+                                .HasColumnType("timestamp with time zone");
+
+                            b1.Property<double>("CostCrystal")
+                                .HasColumnType("double precision");
+
+                            b1.Property<double>("CostDeuterium")
+                                .HasColumnType("double precision");
+
+                            b1.Property<double>("CostMetal")
+                                .HasColumnType("double precision");
+
+                            b1.Property<Guid>("PlanetId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Research")
+                                .IsRequired()
+                                .HasMaxLength(50)
+                                .HasColumnType("character varying(50)");
+
+                            b1.Property<DateTimeOffset>("StartedAt")
+                                .HasColumnType("timestamp with time zone");
+
+                            b1.Property<int>("TargetLevel")
+                                .HasColumnType("integer");
+
+                            b1.HasKey("PlayerId");
+
+                            b1.HasIndex("CompletesAt");
+
+                            b1.ToTable("Players");
+
+                            b1.WithOwner()
+                                .HasForeignKey("PlayerId");
+                        });
+
+                    b.Navigation("CurrentResearch");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>

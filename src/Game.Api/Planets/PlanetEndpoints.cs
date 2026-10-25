@@ -5,6 +5,7 @@ public static class PlanetEndpoints
     private const string PlanetsRoute = "/api/planets";
     private const string PlanetRoute = "/api/planets/{planetId:guid}";
     private const string ConstructionRoute = "/api/planets/{planetId:guid}/construction";
+    private const string ShipyardRoute = "/api/planets/{planetId:guid}/shipyard";
 
     public static IEndpointRouteBuilder MapPlanetEndpoints(this IEndpointRouteBuilder endpoints)
     {
@@ -31,7 +32,7 @@ public static class PlanetEndpoints
             .WithDescription("Start upgrading a building by one level, paying its cost now")
             .RequireAuthorization()
             .Produces<PlanetDto>(StatusCodes.Status200OK)
-            .ProducesValidationProblem()
+            .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
@@ -42,6 +43,17 @@ public static class PlanetEndpoints
             .WithDescription("Cancel the construction in progress and get its full cost back")
             .RequireAuthorization()
             .Produces<PlanetDto>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict);
+
+        endpoints.MapPost(ShipyardRoute, EnqueueUnitsEndpoint.Handle)
+            .WithName("EnqueueUnits")
+            .WithTags("Planets")
+            .WithDescription("Order ships or defenses from this planet's shipyard, paying for all of them now")
+            .RequireAuthorization()
+            .Produces<PlanetDto>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);

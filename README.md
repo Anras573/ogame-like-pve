@@ -74,7 +74,7 @@ dotnet ef migrations add <Name> --project src/Game.Api --output-dir Infrastructu
 
 ```
 src/Game.Core/            game rules: formulas and definitions, no framework dependencies
-src/Game.Api/             API: one folder per feature (Auth/, Seasons/, Players/, Planets/, Realtime/)
+src/Game.Api/             API: one folder per feature (Auth/, Seasons/, Players/, Planets/, Research/, Realtime/)
   Infrastructure/         DbContext, migrations, generic repository, specifications
 tests/Game.Core.Tests/            rules and formulas
 tests/Game.Api.Tests/             unit tests (entities)

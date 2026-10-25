@@ -1,4 +1,5 @@
 using Game.Core.Buildings;
+using Game.Core.Research;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
@@ -16,6 +17,10 @@ public sealed class GameHub : Hub<IGameClient>
 public interface IGameClient
 {
     Task BuildingCompleted(BuildingCompletedMessage message);
+
+    Task ResearchCompleted(ResearchCompletedMessage message);
 }
 
 public record BuildingCompletedMessage(Guid PlanetId, BuildingType Building, int Level);
+
+public record ResearchCompletedMessage(ResearchType Research, int Level);

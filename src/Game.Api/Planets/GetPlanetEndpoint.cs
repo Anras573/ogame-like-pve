@@ -24,8 +24,8 @@ public sealed class GetPlanetEndpoint
 
         // Settle in memory for an up-to-date view; nothing is saved, so reading never races with the worker
         var now = timeProvider.GetUtcNow();
-        owned.Planet.SettleTo(now, owned.Season.EconomySpeed);
+        owned.SettleTo(now);
 
-        return Results.Ok(PlanetDto.From(owned.Planet, owned.Season.EconomySpeed, now));
+        return Results.Ok(PlanetDto.From(owned, now));
     }
 }

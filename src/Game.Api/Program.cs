@@ -4,7 +4,9 @@ using Game.Api.Auth;
 using Game.Api.Infrastructure;
 using Game.Api.Infrastructure.Repositories;
 using Game.Api.Planets;
+using Game.Api.Players;
 using Game.Api.Realtime;
+using Game.Api.Research;
 using Game.Api.Seasons;
 using Game.Api.Users;
 using Microsoft.AspNetCore.Identity;
@@ -73,9 +75,12 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddSignalR().AddJsonProtocol(options => options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 builder.Services.AddSingleton<ConstructionCompletionProcessor>();
+builder.Services.AddSingleton<ResearchCompletionProcessor>();
+builder.Services.AddSingleton<ICompletionProcessor>(services => services.GetRequiredService<ConstructionCompletionProcessor>());
+builder.Services.AddSingleton<ICompletionProcessor>(services => services.GetRequiredService<ResearchCompletionProcessor>());
 if (builder.Configuration.GetValue("Worker:Enabled", true))
 {
-    builder.Services.AddHostedService<ConstructionCompletionWorker>();
+    builder.Services.AddHostedService<CompletionWorker>();
 }
 
 builder.Services.AddOpenApi();
@@ -99,6 +104,7 @@ app.MapGet("/api/health", () => Results.Ok()).WithTags("Health").AllowAnonymous(
 app.MapAuthEndpoints();
 app.MapSeasonEndpoints();
 app.MapPlanetEndpoints();
+app.MapResearchEndpoints();
 app.MapHub<GameHub>(GameHub.Route);
 
 app.Run();

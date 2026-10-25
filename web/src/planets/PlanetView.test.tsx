@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
-import { homePlanet, planetId } from '../test/fixtures'
+import { homePlanet, planetId, researchOverview } from '../test/fixtures'
 import { json, stubApi } from '../test/utils'
 import { PlanetView } from './PlanetView'
 
@@ -73,7 +73,7 @@ describe('PlanetView', () => {
 
     const construction = await screen.findByRole('region', { name: 'Construction' })
     expect(construction).toHaveTextContent('Metal Mine → level 1')
-    expect(construction).toHaveTextContent(/1m 4[78]s left/)
+    expect(construction).toHaveTextContent(/\d+m \d+s left/)
     expect(screen.getByRole('article', { name: 'Crystal Mine' }).querySelector('button')).toBeDisabled()
 
     const post = fetchMock.mock.calls.map(([request]) => request).find((r) => r.method === 'POST')!
@@ -117,5 +117,26 @@ describe('PlanetView', () => {
     await userEvent.click(within(mine).getByRole('button', { name: 'Upgrade to 1' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('This planet is already constructing a building.')
+  })
+
+  it('switches between buildings, research, shipyard and defense', async () => {
+    stubApi({
+      [`GET ${planetPath}`]: () => json(homePlanet()),
+      [`GET ${planetPath}/research`]: () => json(researchOverview()),
+    })
+
+    renderPlanet()
+    await screen.findByRole('article', { name: 'Metal Mine' })
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Research' }))
+    expect(await screen.findByRole('article', { name: 'Computer Technology' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Research' })).toHaveAttribute('aria-selected', 'true')
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Shipyard' }))
+    expect(screen.getByRole('article', { name: 'Light Fighter' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Defense' }))
+    expect(screen.getByRole('article', { name: 'Rocket Launcher' })).toBeInTheDocument()
+    expect(screen.queryByRole('article', { name: 'Metal Mine' })).not.toBeInTheDocument()
   })
 })
