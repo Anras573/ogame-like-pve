@@ -26,7 +26,8 @@ public sealed class CancelConstructionEndpoint
         var now = timeProvider.GetUtcNow();
 
         // Already finished constructions can't be cancelled; settling first makes sure of that
-        var cancelled = owned.Planet.CancelConstruction(now, owned.Season.EconomySpeed);
+        owned.SettleTo(now);
+        var cancelled = owned.Planet.CancelConstruction(now, owned.EconomySpeed);
         if (cancelled is null)
         {
             return PlanetProblems.NothingToCancel();
@@ -41,6 +42,6 @@ public sealed class CancelConstructionEndpoint
             return PlanetProblems.ChangedConcurrently();
         }
 
-        return Results.Ok(PlanetDto.From(owned.Planet, owned.Season.EconomySpeed, now));
+        return Results.Ok(PlanetDto.From(owned, now));
     }
 }

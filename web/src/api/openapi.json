@@ -179,14 +179,7 @@
             }
           },
           "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
-                }
-              }
-            }
+            "description": "Bad Request"
           },
           "401": {
             "description": "Unauthorized"
@@ -230,6 +223,210 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PlanetDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/planets/{planetId}/shipyard": {
+      "post": {
+        "tags": [
+          "Planets"
+        ],
+        "description": "Order ships or defenses from this planet's shipyard, paying for all of them now",
+        "operationId": "EnqueueUnits",
+        "parameters": [
+          {
+            "name": "planetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnqueueUnitsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanetDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/planets/{planetId}/research": {
+      "get": {
+        "tags": [
+          "Research"
+        ],
+        "description": "Get your research, with costs and times for this planet's lab",
+        "operationId": "GetResearch",
+        "parameters": [
+          {
+            "name": "planetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchOverviewDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Research"
+        ],
+        "description": "Start researching the next level of a technology in this planet's lab, paying from this planet",
+        "operationId": "StartResearch",
+        "parameters": [
+          {
+            "name": "planetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartResearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchOverviewDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Research"
+        ],
+        "description": "Cancel the research started on this planet and get its full cost back",
+        "operationId": "CancelResearch",
+        "parameters": [
+          {
+            "name": "planetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchOverviewDto"
                 }
               }
             }
@@ -682,7 +879,8 @@
           "type",
           "level",
           "nextLevelCost",
-          "nextLevelBuildSeconds"
+          "nextLevelBuildSeconds",
+          "missingRequirements"
         ],
         "type": "object",
         "properties": {
@@ -699,6 +897,25 @@
           "nextLevelBuildSeconds": {
             "type": "integer",
             "format": "int32"
+          },
+          "missingRequirements": {
+            "$ref": "#/components/schemas/MissingRequirementsDto"
+          }
+        }
+      },
+      "BuildingLevelDto": {
+        "required": [
+          "building",
+          "level"
+        ],
+        "type": "object",
+        "properties": {
+          "building": {
+            "$ref": "#/components/schemas/BuildingType"
+          },
+          "level": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -711,7 +928,9 @@
           "RoboticsFactory",
           "MetalStorage",
           "CrystalStorage",
-          "DeuteriumTank"
+          "DeuteriumTank",
+          "Shipyard",
+          "ResearchLab"
         ]
       },
       "ConstructionDto": {
@@ -759,6 +978,37 @@
           "position": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "CurrentResearchDto": {
+        "required": [
+          "research",
+          "targetLevel",
+          "planetId",
+          "startedAt",
+          "completesAt"
+        ],
+        "type": "object",
+        "properties": {
+          "research": {
+            "$ref": "#/components/schemas/ResearchType"
+          },
+          "targetLevel": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "planetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completesAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -834,6 +1084,22 @@
           "productionFactor": {
             "type": "number",
             "format": "double"
+          }
+        }
+      },
+      "EnqueueUnitsRequest": {
+        "required": [
+          "unit",
+          "quantity"
+        ],
+        "type": "object",
+        "properties": {
+          "unit": {
+            "$ref": "#/components/schemas/UnitType"
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -958,6 +1224,27 @@
           }
         }
       },
+      "MissingRequirementsDto": {
+        "required": [
+          "buildings",
+          "research"
+        ],
+        "type": "object",
+        "properties": {
+          "buildings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BuildingLevelDto"
+            }
+          },
+          "research": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResearchLevelDto"
+            }
+          }
+        }
+      },
       "PlanetDto": {
         "required": [
           "id",
@@ -971,6 +1258,9 @@
           "energy",
           "buildings",
           "construction",
+          "units",
+          "shipyardQueue",
+          "shipyardProgressAt",
           "serverTime"
         ],
         "type": "object",
@@ -1020,6 +1310,25 @@
                 "$ref": "#/components/schemas/ConstructionDto"
               }
             ]
+          },
+          "units": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnitDto"
+            }
+          },
+          "shipyardQueue": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShipyardOrderDto"
+            }
+          },
+          "shipyardProgressAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           },
           "serverTime": {
             "type": "string",
@@ -1109,6 +1418,109 @@
           }
         }
       },
+      "ResearchDto": {
+        "required": [
+          "type",
+          "level",
+          "nextLevelCost",
+          "nextLevelResearchSeconds",
+          "missingRequirements"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/ResearchType"
+          },
+          "level": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nextLevelCost": {
+            "$ref": "#/components/schemas/ResourcesDto"
+          },
+          "nextLevelResearchSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "missingRequirements": {
+            "$ref": "#/components/schemas/MissingRequirementsDto"
+          }
+        }
+      },
+      "ResearchLevelDto": {
+        "required": [
+          "research",
+          "level"
+        ],
+        "type": "object",
+        "properties": {
+          "research": {
+            "$ref": "#/components/schemas/ResearchType"
+          },
+          "level": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ResearchOverviewDto": {
+        "required": [
+          "planetId",
+          "researchLabLevel",
+          "technologies",
+          "currentResearch",
+          "serverTime"
+        ],
+        "type": "object",
+        "properties": {
+          "planetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "researchLabLevel": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "technologies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResearchDto"
+            }
+          },
+          "currentResearch": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CurrentResearchDto"
+              }
+            ]
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ResearchType": {
+        "enum": [
+          "EnergyTechnology",
+          "LaserTechnology",
+          "IonTechnology",
+          "HyperspaceTechnology",
+          "PlasmaTechnology",
+          "CombustionDrive",
+          "ImpulseDrive",
+          "HyperspaceDrive",
+          "EspionageTechnology",
+          "ComputerTechnology",
+          "Astrophysics",
+          "WeaponsTechnology",
+          "ShieldingTechnology",
+          "ArmourTechnology"
+        ]
+      },
       "ResendConfirmationEmailRequest": {
         "required": [
           "email"
@@ -1178,6 +1590,27 @@
           }
         }
       },
+      "ShipyardOrderDto": {
+        "required": [
+          "unit",
+          "quantity",
+          "unitBuildSeconds"
+        ],
+        "type": "object",
+        "properties": {
+          "unit": {
+            "$ref": "#/components/schemas/UnitType"
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unitBuildSeconds": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "StartConstructionRequest": {
         "required": [
           "building"
@@ -1186,6 +1619,17 @@
         "properties": {
           "building": {
             "$ref": "#/components/schemas/BuildingType"
+          }
+        }
+      },
+      "StartResearchRequest": {
+        "required": [
+          "research"
+        ],
+        "type": "object",
+        "properties": {
+          "research": {
+            "$ref": "#/components/schemas/ResearchType"
           }
         }
       },
@@ -1247,6 +1691,101 @@
             "type": "boolean"
           }
         }
+      },
+      "UnitCategory": {
+        "enum": [
+          "Ship",
+          "Defense"
+        ]
+      },
+      "UnitDto": {
+        "required": [
+          "type",
+          "category",
+          "count",
+          "cost",
+          "buildSeconds",
+          "weapon",
+          "shield",
+          "structuralIntegrity",
+          "speed",
+          "cargo",
+          "maxPerPlanet",
+          "missingRequirements"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/UnitType"
+          },
+          "category": {
+            "$ref": "#/components/schemas/UnitCategory"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cost": {
+            "$ref": "#/components/schemas/ResourcesDto"
+          },
+          "buildSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "weapon": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "shield": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "structuralIntegrity": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "speed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cargo": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxPerPlanet": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "missingRequirements": {
+            "$ref": "#/components/schemas/MissingRequirementsDto"
+          }
+        }
+      },
+      "UnitType": {
+        "enum": [
+          "SmallCargo",
+          "LargeCargo",
+          "LightFighter",
+          "HeavyFighter",
+          "Cruiser",
+          "Battleship",
+          "Bomber",
+          "Destroyer",
+          "Recycler",
+          "EspionageProbe",
+          "ColonyShip",
+          "RocketLauncher",
+          "LightLaser",
+          "HeavyLaser",
+          "GaussCannon",
+          "IonCannon",
+          "PlasmaTurret",
+          "SmallShieldDome",
+          "LargeShieldDome"
+        ]
       }
     }
   },
@@ -1259,6 +1798,9 @@
     },
     {
       "name": "Planets"
+    },
+    {
+      "name": "Research"
     },
     {
       "name": "Auth"

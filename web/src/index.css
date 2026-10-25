@@ -221,7 +221,7 @@ button.secondary:hover:not(:disabled) {
   color: var(--warning);
 }
 
-.construction {
+.progress-panel {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -229,24 +229,24 @@ button.secondary:hover:not(:disabled) {
   border-color: var(--accent);
 }
 
-.construction p {
+.progress-panel p {
   margin: 0.25rem 0 0;
 }
 
-.building-grid {
+.card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 0.75rem;
 }
 
-.building {
+.item {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   padding: 1rem;
 }
 
-.building p {
+.item p {
   margin: 0;
   font-size: 0.9rem;
   flex: 1;
@@ -272,4 +272,71 @@ button.secondary:hover:not(:disabled) {
 
 .cost .missing {
   color: var(--danger);
+}
+
+.progress-panel,
+.shipyard-queue {
+  margin-bottom: 1rem;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 1.5rem 0 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  background: none;
+  border-radius: 6px 6px 0 0;
+  color: var(--muted);
+  padding: 0.5rem 1rem;
+}
+
+.tab:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--text-strong);
+}
+
+.tab.active {
+  background: var(--surface);
+  color: var(--text-strong);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.requires {
+  color: var(--warning);
+}
+
+.item p.requires {
+  flex: 0;
+}
+
+.stats {
+  font-size: 0.8rem !important;
+  color: var(--muted);
+  flex: 0 !important;
+}
+
+.order {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.order input {
+  width: 0;
+  flex: 1;
+  min-width: 4rem;
+  font: inherit;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-strong);
+}
+
+.shipyard-queue ol {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
 }

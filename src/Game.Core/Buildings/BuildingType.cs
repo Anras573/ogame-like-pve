@@ -10,4 +10,6 @@ public enum BuildingType
     MetalStorage,
     CrystalStorage,
     DeuteriumTank,
+    Shipyard,
+    ResearchLab,
 }

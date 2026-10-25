@@ -2,11 +2,17 @@ import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { planetQueryKey } from '../planets/usePlanets'
-import type { BuildingType } from '../planets/types'
+import type { BuildingType, ResearchType } from '../planets/types'
+import { allResearchQueryKey } from '../research/useResearch'
 
 interface BuildingCompletedMessage {
   planetId: string
   building: BuildingType
+  level: number
+}
+
+interface ResearchCompletedMessage {
+  research: ResearchType
   level: number
 }
 
@@ -26,6 +32,12 @@ export function useGameHub() {
 
     connection.on('BuildingCompleted', (message: BuildingCompletedMessage) => {
       void queryClient.invalidateQueries({ queryKey: planetQueryKey(message.planetId) })
+    })
+
+    // Research unlocks things on every planet, so refresh them all
+    connection.on('ResearchCompleted', (_message: ResearchCompletedMessage) => {
+      void queryClient.invalidateQueries({ queryKey: allResearchQueryKey })
+      void queryClient.invalidateQueries({ queryKey: ['planet'] })
     })
 
     // Live updates are a nicety: the page also refreshes when a countdown runs out, so a failed connection is fine

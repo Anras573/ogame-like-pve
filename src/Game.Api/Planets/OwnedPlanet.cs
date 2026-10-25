@@ -10,10 +10,21 @@ using Game.Api.Users;
 namespace Game.Api.Planets;
 
 /// <summary>
-/// A planet together with the season whose rules (economy speed, dates) apply to it.
+/// A planet together with its owner (whose research unlocks things on it) and the season whose rules apply to it.
 /// </summary>
-public sealed record OwnedPlanet(Planet Planet, Season Season)
+public sealed record OwnedPlanet(Planet Planet, Player Player, Season Season)
 {
+    public int EconomySpeed => Season.EconomySpeed;
+
+    /// <summary>
+    /// Brings both the planet and its owner's research up to <paramref name="now"/>.
+    /// </summary>
+    public void SettleTo(DateTimeOffset now)
+    {
+        Player.SettleResearch(now);
+        Planet.SettleTo(now, EconomySpeed);
+    }
+
     /// <summary>
     /// Loads <paramref name="planetId"/> if it belongs to the signed-in user; otherwise <c>null</c>, so other
     /// players' planets look exactly like planets that don't exist.
@@ -44,6 +55,6 @@ public sealed record OwnedPlanet(Planet Planet, Season Season)
         }
 
         var season = await seasonRepository.FirstOrDefaultAsync(new SeasonByIdSpecification(planet.SeasonId), cancellationToken);
-        return season is null ? null : new OwnedPlanet(planet, season);
+        return season is null ? null : new OwnedPlanet(planet, player, season);
     }
 }

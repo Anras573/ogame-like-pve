@@ -238,9 +238,10 @@ run in parallel later (e.g. a normal and a fast-speed season).
 - **Data-driven content.** Buildings, research, ships, NPC factions and tiers
   are definitions (numbers), kept apart from the formulas that use them, so
   balancing doesn't touch logic.
-  - M1: definitions are a typed C# catalog in `Game.Core`
-    (`BuildingCatalog`). They move to versioned JSON/YAML files once the
-    balancing tool exists or non-developers need to edit them.
+  - Today definitions are typed C# catalogs in `Game.Core`
+    (`BuildingCatalog`, `ResearchCatalog`, `UnitCatalog`). They move to
+    versioned JSON/YAML files once the balancing tool exists or non-developers
+    need to edit them.
 - **Game speed multiplier** (universe setting) for fast test universes.
 
 ### Solution layout
@@ -302,7 +303,17 @@ Each milestone ends with something playable/demoable.
 ### M2 — Research & shipyard
 - Research lab + tech tree with prerequisites.
 - Shipyard and defense construction (batch queue).
-- **Done when:** a player can unlock and build ships and defenses.
+- **Done when:** a player can unlock and build ships and defenses. ✅ Done.
+- Research belongs to the player (it unlocks things on every planet) but runs
+  in one planet's lab and is paid from that planet. One research at a time.
+- The shipyard queue holds up to 10 orders. Units are paid up front and
+  delivered one at a time; orders can't be cancelled.
+- Prerequisites apply to buildings too (e.g. the shipyard needs a level-2
+  robotics factory).
+- Not in M2: research effects (energy, weapons, shielding, armour, computer,
+  astrophysics bonuses) and ship stats in use. The technologies only unlock
+  things for now; their effects arrive with the features that use them
+  (fleets in M3, combat in M4).
 
 ### M3 — Galaxy, fleets & first NPCs
 - Galaxy view (browse systems).

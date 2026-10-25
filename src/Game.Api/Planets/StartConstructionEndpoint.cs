@@ -31,11 +31,14 @@ public sealed class StartConstructionEndpoint
             return PlanetProblems.SeasonClosed();
         }
 
-        var result = owned.Planet.StartConstruction(request.Building, now, owned.Season.EconomySpeed);
+        owned.SettleTo(now);
+        var result = owned.Planet.StartConstruction(request.Building, owned.Player.ResearchLevels, now, owned.EconomySpeed);
         switch (result)
         {
             case StartConstructionResult.AlreadyBuilding:
                 return PlanetProblems.AlreadyBuilding();
+            case StartConstructionResult.RequirementsNotMet:
+                return PlanetProblems.RequirementsNotMet();
             case StartConstructionResult.NotEnoughResources:
                 return PlanetProblems.NotEnoughResources();
         }
@@ -49,7 +52,7 @@ public sealed class StartConstructionEndpoint
             return PlanetProblems.ChangedConcurrently();
         }
 
-        return Results.Ok(PlanetDto.From(owned.Planet, owned.Season.EconomySpeed, now));
+        return Results.Ok(PlanetDto.From(owned, now));
     }
 }
 

@@ -2,6 +2,7 @@ using Game.Api.Planets;
 using Game.Api.Players;
 using Game.Api.Seasons;
 using Game.Core.Buildings;
+using Game.Core.Research;
 using Game.Core.Resources;
 using Game.Core.Universe;
 
@@ -10,6 +11,7 @@ namespace Game.Api.Tests;
 public class PlanetTests
 {
     private const int Speed = 1;
+    private static readonly Dictionary<ResearchType, int> s_noResearch = [];
     private static readonly DateTimeOffset s_start = new(2026, 11, 1, 12, 0, 0, TimeSpan.Zero);
 
     private static Planet CreatePlanet()
@@ -75,7 +77,7 @@ public class PlanetTests
         var planet = CreatePlanet();
 
         // Act
-        var result = planet.StartConstruction(BuildingType.MetalMine, s_start, Speed);
+        var result = planet.StartConstruction(BuildingType.MetalMine, s_noResearch, s_start, Speed);
 
         // Assert
         Assert.Equal(StartConstructionResult.Started, result);
@@ -91,10 +93,10 @@ public class PlanetTests
     {
         // Arrange
         var planet = CreatePlanet();
-        planet.StartConstruction(BuildingType.MetalMine, s_start, Speed);
+        planet.StartConstruction(BuildingType.MetalMine, s_noResearch, s_start, Speed);
 
         // Act
-        var result = planet.StartConstruction(BuildingType.CrystalMine, s_start.AddSeconds(10), Speed);
+        var result = planet.StartConstruction(BuildingType.CrystalMine, s_noResearch, s_start.AddSeconds(10), Speed);
 
         // Assert
         Assert.Equal(StartConstructionResult.AlreadyBuilding, result);
@@ -108,7 +110,7 @@ public class PlanetTests
         var planet = CreatePlanet();
 
         // Act
-        var result = planet.StartConstruction(BuildingType.RoboticsFactory, s_start, Speed); // needs 200 deuterium
+        var result = planet.StartConstruction(BuildingType.RoboticsFactory, s_noResearch, s_start, Speed); // needs 200 deuterium
 
         // Assert
         Assert.Equal(StartConstructionResult.NotEnoughResources, result);
@@ -121,10 +123,10 @@ public class PlanetTests
     {
         // Arrange
         var planet = CreatePlanet();
-        planet.StartConstruction(BuildingType.MetalMine, s_start, Speed);
+        planet.StartConstruction(BuildingType.MetalMine, s_noResearch, s_start, Speed);
 
         // Act
-        var result = planet.StartConstruction(BuildingType.MetalMine, s_start.AddMinutes(10), Speed);
+        var result = planet.StartConstruction(BuildingType.MetalMine, s_noResearch, s_start.AddMinutes(10), Speed);
 
         // Assert
         Assert.Equal(StartConstructionResult.Started, result);
@@ -137,7 +139,7 @@ public class PlanetTests
     {
         // Arrange
         var planet = CreatePlanet();
-        planet.StartConstruction(BuildingType.SolarPlant, s_start, Speed); // 75 metal, 30 crystal, 151 s
+        planet.StartConstruction(BuildingType.SolarPlant, s_noResearch, s_start, Speed); // 75 metal, 30 crystal, 151 s
         var completesAt = planet.Construction!.CompletesAt;
 
         // Act
@@ -159,9 +161,9 @@ public class PlanetTests
     {
         // Arrange
         var planet = CreatePlanet();
-        planet.StartConstruction(BuildingType.SolarPlant, s_start, Speed);
+        planet.StartConstruction(BuildingType.SolarPlant, s_noResearch, s_start, Speed);
         var solarDone = planet.Construction!.CompletesAt;
-        planet.StartConstruction(BuildingType.MetalMine, solarDone, Speed);
+        planet.StartConstruction(BuildingType.MetalMine, s_noResearch, solarDone, Speed);
         var mineDone = planet.Construction!.CompletesAt;
         var metalAtMineStart = planet.Resources.Metal;
 
@@ -179,7 +181,7 @@ public class PlanetTests
     {
         // Arrange
         var planet = CreatePlanet();
-        planet.StartConstruction(BuildingType.MetalMine, s_start, Speed);
+        planet.StartConstruction(BuildingType.MetalMine, s_noResearch, s_start, Speed);
 
         // Act
         var cancelled = planet.CancelConstruction(s_start, Speed);
@@ -196,7 +198,7 @@ public class PlanetTests
     {
         // Arrange
         var planet = CreatePlanet();
-        planet.StartConstruction(BuildingType.MetalMine, s_start, Speed);
+        planet.StartConstruction(BuildingType.MetalMine, s_noResearch, s_start, Speed);
 
         // Act
         var cancelled = planet.CancelConstruction(s_start.AddHours(1), Speed);

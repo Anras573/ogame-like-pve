@@ -2,15 +2,19 @@ using Game.Api.Players;
 using Game.Api.Seasons;
 using Game.Core.Buildings;
 using Game.Core.Economy;
+using Game.Core.Research;
 using Game.Core.Resources;
+using Game.Core.TechTree;
+using Game.Core.Units;
 using Game.Core.Universe;
 
 namespace Game.Api.Planets;
 
 /// <summary>
-/// A planet and its economy. Resources are stored as of <see cref="ResourcesUpdatedAt"/> and brought up to date
-/// lazily: every read or change first calls <see cref="SettleTo"/>, which completes due constructions in order
-/// and accrues production for the time that passed.
+/// A planet: its economy, buildings and the units its shipyard built. Resources are stored as of
+/// <see cref="ResourcesUpdatedAt"/> and brought up to date lazily: every read or change first calls
+/// <see cref="SettleTo"/>, which completes due constructions in order, delivers finished shipyard units and
+/// accrues production for the time that passed.
 /// </summary>
 public sealed class Planet
 {
@@ -20,6 +24,8 @@ public sealed class Planet
     public static ResourceAmounts StartingResources { get; } = new(500, 500, 0);
 
     private Dictionary<BuildingType, int> _buildingLevels = [];
+    private Dictionary<UnitType, int> _units = [];
+    private List<ShipyardOrder> _shipyardOrders = [];
 
     public PlanetId Id { get; private set; }
     public PlayerId PlayerId { get; private set; }
@@ -34,12 +40,19 @@ public sealed class Planet
     public Construction? Construction { get; private set; }
 
     /// <summary>
+    /// When the unit at the front of the shipyard queue started, or <c>null</c> when the shipyard is idle.
+    /// </summary>
+    public DateTimeOffset? ShipyardProgressAt { get; private set; }
+
+    /// <summary>
     /// Optimistic concurrency token, so a player action and the background worker can't both settle the same state.
     /// </summary>
     public uint Version { get; private set; }
 
     public Coordinates Coordinates => new(Galaxy, SolarSystem, Position);
     public IReadOnlyDictionary<BuildingType, int> BuildingLevels => _buildingLevels;
+    public IReadOnlyDictionary<UnitType, int> Units => _units;
+    public IReadOnlyList<ShipyardOrder> ShipyardOrders => _shipyardOrders;
 
     // EF Core constructor
     private Planet()
@@ -111,6 +124,7 @@ public sealed class Planet
         }
 
         AccrueTo(now, economySpeed);
+        AdvanceShipyard(now);
         return completed;
     }
 
@@ -124,16 +138,45 @@ public sealed class Planet
         return BuildingRules.BuildTime(cost, _buildingLevels.LevelOf(BuildingType.RoboticsFactory), economySpeed);
     }
 
+    public IReadOnlyList<Requirement> MissingRequirements(BuildingType building, IReadOnlyDictionary<ResearchType, int> researchLevels)
+    {
+        return RequirementCheck.Missing(BuildingCatalog.Get(building).Requirements, _buildingLevels, researchLevels);
+    }
+
+    public IReadOnlyList<Requirement> MissingRequirements(UnitType unit, IReadOnlyDictionary<ResearchType, int> researchLevels)
+    {
+        return RequirementCheck.Missing(UnitCatalog.Get(unit).Requirements, _buildingLevels, researchLevels);
+    }
+
+    /// <summary>
+    /// How long one <paramref name="unit"/> takes in this planet's shipyard.
+    /// </summary>
+    public TimeSpan UnitBuildTime(UnitType unit, int economySpeed)
+    {
+        return UnitRules.BuildTime(unit, _buildingLevels.LevelOf(BuildingType.Shipyard), economySpeed);
+    }
+
     /// <summary>
     /// Starts upgrading <paramref name="building"/> by one level, paying its cost up front.
     /// </summary>
-    public StartConstructionResult StartConstruction(BuildingType building, DateTimeOffset now, int economySpeed)
+    public StartConstructionResult StartConstruction(
+        BuildingType building,
+        IReadOnlyDictionary<ResearchType, int> researchLevels,
+        DateTimeOffset now,
+        int economySpeed)
     {
+        ArgumentNullException.ThrowIfNull(researchLevels);
+
         SettleTo(now, economySpeed);
 
         if (Construction is not null)
         {
             return StartConstructionResult.AlreadyBuilding;
+        }
+
+        if (MissingRequirements(building, researchLevels).Count > 0)
+        {
+            return StartConstructionResult.RequirementsNotMet;
         }
 
         var cost = NextLevelCost(building);
@@ -171,6 +214,104 @@ public sealed class Planet
         return construction;
     }
 
+    /// <summary>
+    /// Adds <paramref name="quantity"/> × <paramref name="unit"/> to the shipyard queue, paying for all of them now.
+    /// </summary>
+    public EnqueueUnitsResult EnqueueUnits(
+        UnitType unit,
+        int quantity,
+        IReadOnlyDictionary<ResearchType, int> researchLevels,
+        DateTimeOffset now,
+        int economySpeed)
+    {
+        ArgumentNullException.ThrowIfNull(researchLevels);
+
+        SettleTo(now, economySpeed);
+
+        if (quantity < 1 || quantity > Core.Units.ShipyardQueue.MaxQuantityPerOrder)
+        {
+            return EnqueueUnitsResult.InvalidQuantity;
+        }
+
+        if (_shipyardOrders.Count >= Core.Units.ShipyardQueue.MaxOrders)
+        {
+            return EnqueueUnitsResult.QueueFull;
+        }
+
+        if (MissingRequirements(unit, researchLevels).Count > 0)
+        {
+            return EnqueueUnitsResult.RequirementsNotMet;
+        }
+
+        if (UnitCatalog.Get(unit).MaxPerPlanet is { } max)
+        {
+            var queued = _shipyardOrders.Where(o => o.Unit == unit).Sum(o => o.Quantity);
+            if (_units.GetValueOrDefault(unit) + queued + quantity > max)
+            {
+                return EnqueueUnitsResult.LimitReached;
+            }
+        }
+
+        var cost = UnitRules.CostOf(unit, quantity);
+        if (!Resources.Covers(cost))
+        {
+            return EnqueueUnitsResult.NotEnoughResources;
+        }
+
+        Resources -= cost;
+        _shipyardOrders = [.. _shipyardOrders, new ShipyardOrder(unit, quantity, (int)UnitBuildTime(unit, economySpeed).TotalSeconds)];
+
+        // An idle shipyard starts on the new order right away
+        ShipyardProgressAt ??= now;
+
+        return EnqueueUnitsResult.Queued;
+    }
+
+    /// <summary>
+    /// Pays <paramref name="cost"/> if the planet can afford it at <paramref name="now"/>.
+    /// </summary>
+    public bool TrySpend(ResourceAmounts cost, DateTimeOffset now, int economySpeed)
+    {
+        SettleTo(now, economySpeed);
+
+        if (!Resources.Covers(cost))
+        {
+            return false;
+        }
+
+        Resources -= cost;
+        return true;
+    }
+
+    public void Refund(ResourceAmounts amount, DateTimeOffset now, int economySpeed)
+    {
+        SettleTo(now, economySpeed);
+        Resources += amount;
+    }
+
+    private void AdvanceShipyard(DateTimeOffset now)
+    {
+        if (ShipyardProgressAt is not { } progressAt)
+        {
+            return;
+        }
+
+        var result = Core.Units.ShipyardQueue.Advance(_shipyardOrders, progressAt, now);
+        if (result.Completed.Count > 0)
+        {
+            var units = new Dictionary<UnitType, int>(_units);
+            foreach (var (unit, count) in result.Completed)
+            {
+                units[unit] = units.GetValueOrDefault(unit) + count;
+            }
+
+            _units = units;
+        }
+
+        _shipyardOrders = [.. result.Remaining];
+        ShipyardProgressAt = result.ProgressAt;
+    }
+
     private void AccrueTo(DateTimeOffset moment, int economySpeed)
     {
         if (moment <= ResourcesUpdatedAt)
@@ -188,5 +329,16 @@ public enum StartConstructionResult
 {
     Started,
     AlreadyBuilding,
+    RequirementsNotMet,
+    NotEnoughResources,
+}
+
+public enum EnqueueUnitsResult
+{
+    Queued,
+    InvalidQuantity,
+    QueueFull,
+    RequirementsNotMet,
+    LimitReached,
     NotEnoughResources,
 }

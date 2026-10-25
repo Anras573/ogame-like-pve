@@ -1,10 +1,14 @@
-import { useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
-import { buildingGroups, buildingInfo } from './buildings'
-import { canAfford, formatAmount, formatDuration, projectResources } from './economy'
-import type { Building, Planet, Resources } from './types'
-import { planetQueryKey, useCancelConstruction, usePlanet, useStartConstruction } from './usePlanets'
+import { useState } from 'react'
+import { ResearchTab } from '../research/ResearchTab'
+import { UnitsTab } from '../shipyard/UnitsTab'
+import { BuildingsTab } from './BuildingsTab'
+import { formatAmount, projectResources } from './economy'
+import type { Planet, Resources } from './types'
+import { usePlanet } from './usePlanets'
 import { useServerNow } from './useServerNow'
+
+const tabs = ['Buildings', 'Research', 'Shipyard', 'Defense'] as const
+type Tab = (typeof tabs)[number]
 
 export function PlanetView({ planetId }: { planetId: string }) {
   const { data: planet, isPending, isError, dataUpdatedAt } = usePlanet(planetId)
@@ -18,9 +22,7 @@ export function PlanetView({ planetId }: { planetId: string }) {
 function LoadedPlanet({ planet, receivedAt }: { planet: Planet; receivedAt: number }) {
   const now = useServerNow(planet.serverTime, receivedAt)
   const resources = projectResources(planet, now)
-  const start = useStartConstruction(planet.id)
-  const cancel = useCancelConstruction(planet.id)
-  const error = start.error ?? cancel.error
+  const [tab, setTab] = useState<Tab>('Buildings')
 
   return (
     <div className="planet">
@@ -34,36 +36,27 @@ function LoadedPlanet({ planet, receivedAt }: { planet: Planet; receivedAt: numb
 
       <ResourceBar planet={planet} resources={resources} />
 
-      {planet.construction && (
-        <ConstructionPanel
-          planet={planet}
-          now={now}
-          onCancel={() => cancel.mutate()}
-          cancelling={cancel.isPending}
-        />
-      )}
+      <nav className="tabs" role="tablist" aria-label="Planet">
+        {tabs.map((t) => (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            aria-selected={tab === t}
+            className={tab === t ? 'tab active' : 'tab'}
+            onClick={() => setTab(t)}
+          >
+            {t}
+          </button>
+        ))}
+      </nav>
 
-      {error && <p role="alert">{error.message}</p>}
-
-      {buildingGroups.map((group) => (
-        <section key={group.title}>
-          <h2>{group.title}</h2>
-          <div className="building-grid">
-            {group.buildings.map((type) => {
-              const building = planet.buildings.find((b) => b.type === type)
-              return building ? (
-                <BuildingCard
-                  key={type}
-                  building={building}
-                  available={resources}
-                  busy={planet.construction !== null || start.isPending}
-                  onUpgrade={() => start.mutate(type)}
-                />
-              ) : null
-            })}
-          </div>
-        </section>
-      ))}
+      <div role="tabpanel" aria-label={tab}>
+        {tab === 'Buildings' && <BuildingsTab planet={planet} resources={resources} now={now} />}
+        {tab === 'Research' && <ResearchTab planetId={planet.id} resources={resources} now={now} />}
+        {tab === 'Shipyard' && <UnitsTab planet={planet} category="Ship" resources={resources} now={now} />}
+        {tab === 'Defense' && <UnitsTab planet={planet} category="Defense" resources={resources} now={now} />}
+      </div>
     </div>
   )
 }
@@ -115,71 +108,5 @@ function ResourceTile(props: { label: string; amount: number; capacity: number; 
         {full ? 'Storage full' : `+${formatAmount(props.hourly)}/h`} · cap {formatAmount(props.capacity)}
       </dd>
     </div>
-  )
-}
-
-function ConstructionPanel(props: { planet: Planet; now: number; onCancel: () => void; cancelling: boolean }) {
-  const construction = props.planet.construction!
-  const completesAt = Date.parse(construction.completesAt)
-  const totalSeconds = (completesAt - Date.parse(construction.startedAt)) / 1000
-
-  // Request latency makes our clock estimate run slightly behind, so never show more than the whole build time
-  const remainingSeconds = Math.min(totalSeconds, (completesAt - props.now) / 1000)
-  const queryClient = useQueryClient()
-  const planetId = props.planet.id
-
-  // Refresh once it should be done, in case the live notification doesn't arrive
-  const done = remainingSeconds <= 0
-  useEffect(() => {
-    if (done) void queryClient.invalidateQueries({ queryKey: planetQueryKey(planetId) })
-  }, [done, planetId, queryClient])
-
-  return (
-    <section className="card construction" aria-label="Construction">
-      <div>
-        <strong>
-          {buildingInfo[construction.building].name} → level {construction.targetLevel}
-        </strong>
-        <p className="muted">{done ? 'Finishing…' : `${formatDuration(remainingSeconds)} left`}</p>
-      </div>
-      <button type="button" className="secondary" onClick={props.onCancel} disabled={props.cancelling || done}>
-        Cancel
-      </button>
-    </section>
-  )
-}
-
-function BuildingCard(props: { building: Building; available: Resources; busy: boolean; onUpgrade: () => void }) {
-  const { building } = props
-  const info = buildingInfo[building.type]
-  const affordable = canAfford(props.available, building.nextLevelCost)
-  const cost = building.nextLevelCost
-
-  return (
-    <article className="card building" aria-label={info.name}>
-      <h3>
-        {info.name} <span className="level">Level {building.level}</span>
-      </h3>
-      <p className="muted">{info.description}</p>
-      <ul className="cost">
-        {cost.metal > 0 && <CostItem label="Metal" amount={cost.metal} available={props.available.metal} />}
-        {cost.crystal > 0 && <CostItem label="Crystal" amount={cost.crystal} available={props.available.crystal} />}
-        {cost.deuterium > 0 && (
-          <CostItem label="Deuterium" amount={cost.deuterium} available={props.available.deuterium} />
-        )}
-        <li className="muted">{formatDuration(building.nextLevelBuildSeconds)}</li>
-      </ul>
-      <button type="button" onClick={props.onUpgrade} disabled={props.busy || !affordable}>
-        Upgrade to {building.level + 1}
-      </button>
-    </article>
-  )
-}
-
-function CostItem(props: { label: string; amount: number; available: number }) {
-  return (
-    <li className={props.available < props.amount ? 'missing' : undefined}>
-      {props.label} {formatAmount(props.amount)}
-    </li>
   )
 }

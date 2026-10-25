@@ -18,7 +18,7 @@ public sealed class ConstructionCompletionProcessor(
     IServiceScopeFactory scopeFactory,
     IHubContext<GameHub, IGameClient> hubContext,
     TimeProvider timeProvider,
-    ILogger<ConstructionCompletionProcessor> logger)
+    ILogger<ConstructionCompletionProcessor> logger) : ICompletionProcessor
 {
     private const int BatchSize = 100;
 
